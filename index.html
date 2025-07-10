@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Responsive Spinner Wheel</title>
   <style>
     :root {
@@ -46,6 +46,8 @@
       position: relative;
       width: var(--wheel-size);
       height: var(--wheel-size);
+      transform: rotate(-92deg);
+      z-index: 0;
     }
 
     .wheel {
@@ -57,6 +59,7 @@
       position: relative;
       transition: transform 4s ease-out;
       overflow: hidden;
+      z-index: 1;
     }
 
     .segment {
@@ -98,7 +101,26 @@
       border-left: calc(var(--indicator-size) * 0.5) solid transparent;
       border-right: calc(var(--indicator-size) * 0.5) solid transparent;
       border-bottom: var(--indicator-size) solid red;
-      z-index: 2;
+      z-index: 3;
+    }
+
+    #result {
+      position: absolute;
+      top: calc(-1 * var(--indicator-size) - 50px);
+      left: 50%;
+      transform: translateX(-50%)translateY(700px);
+      z-index: 10;
+      color: #2ecc71;
+      background-color: rgba(0, 0, 0, 0.75);
+      padding: 8px 14px;
+      border-radius: 6px;
+      white-space: nowrap;
+      user-select: none;
+      font-size: calc(var(--font-size) + 4px);
+      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
     }
 
     .spin-btn {
@@ -111,29 +133,25 @@
       border-radius: 8px;
       cursor: pointer;
       transition: background 0.3s ease;
+      z-index: 10;
+      user-select: none;
     }
 
     .spin-btn:hover {
       background-color: #2980b9;
-    }
-
-    #result {
-      margin-top: 20px;
-      font-size: calc(var(--font-size) + 4px);
-      font-weight: bold;
-      color: #2ecc71;
     }
   </style>
 </head>
 
 <body>
 
+  <div class="indicator"></div>
   <div class="wheel-container">
-    <div class="indicator"></div>
     <div class="wheel" id="wheel"></div>
   </div>
-  <button class="spin-btn" onclick="spin()">SPIN</button>
   <div id="result"></div>
+
+  <button class="spin-btn" onclick="spin()">SPIN</button>
 
   <script>
     const wheel = document.getElementById("wheel");
@@ -154,23 +172,27 @@
     let currentAngle = 0;
     let isSpinning = false;
 
-    // Draw segments and labels
+    // Create wheel segments and labels
     segments.forEach((seg, i) => {
       const angle = i * anglePerSegment;
 
-      // Segment
+      // Segment slice
       const segment = document.createElement("div");
       segment.className = "segment";
       segment.style.background = seg.color;
       segment.style.transform = `rotate(${angle}deg)`;
       wheel.appendChild(segment);
 
-      // Label container
+      // Segment label
       const label = document.createElement("div");
       label.className = "segment-label";
 
+      // Calculate radius in px from CSS variable for label translation
+      const wheelSizePx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--wheel-size'));
+      const labelDistance = wheelSizePx / 2.6;
+
       const labelAngle = angle + anglePerSegment / 2;
-      label.style.transform = `rotate(${labelAngle}deg) translate(${parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--wheel-size')) / 2.6}px) rotate(${-labelAngle}deg)`;
+      label.style.transform = `rotate(${labelAngle}deg) translate(${labelDistance}px) rotate(${-labelAngle}deg)`;
 
       const text = document.createElement("div");
       text.className = "label-text";
@@ -183,19 +205,28 @@
     function spin() {
       if (isSpinning) return;
       isSpinning = true;
+      resultDisplay.style.opacity = 0;
       resultDisplay.textContent = "";
 
       const spins = Math.floor(Math.random() * 4) + 5;
-      const selected = Math.floor(Math.random() * segments.length);
-      const extraRotation = selected * anglePerSegment + anglePerSegment / 2;
-      const totalRotation = spins * 360 + extraRotation;
+      const extraDegrees = Math.floor(Math.random() * 360);
+      const totalRotation = spins * 360 + extraDegrees;
       currentAngle += totalRotation;
 
       wheel.style.transition = "transform 4s ease-out";
       wheel.style.transform = `rotate(${currentAngle}deg)`;
 
       setTimeout(() => {
-        resultDisplay.textContent = `Prize: ${segments[selected].label}`;
+        // Calculate normalized angle relative to 0 at indicator (top)
+        const normalizedAngle = (360 - (currentAngle % 360)) % 360;
+
+        // Determine which segment the indicator points to
+        const selectedIndex = Math.floor(normalizedAngle / anglePerSegment) % segments.length;
+        const selectedSegment = segments[selectedIndex];
+
+        resultDisplay.textContent = `Result: ${selectedSegment.label}`;
+        resultDisplay.style.opacity = 1;
+
         isSpinning = false;
       }, 4000);
     }
